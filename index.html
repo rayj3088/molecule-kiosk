@@ -1,0 +1,1036 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>html{color-scheme:dark;background:#000}body{margin:0}</style><title>Molecule Kiosk Prototype</title></head><body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+/* Layout: a black blueprint stage with a spinnable wireframe cabinet on the left, a tabbed control panel on the right (Machine / Lab / Nature). On a phone the panel stacks under the stage. */
+:root {
+  color-scheme: dark;
+  --bg: #000000;
+  --panel: #05080a;
+  --edge: #1c2a33;
+  --line: #9fe7ff;
+  --ink: #dbe7ee;
+  --muted: #7f909c;
+  --led: #ffc857;
+  --led-bg: #120d04;
+  --life: #37d6a0;
+  --chem: #ff8a5c;
+  --solid: #7ea8ff;
+  --box: #ffc857;
+  --pipe: #2f9a82;
+  --warn: #ff5d5d;
+  --font-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Share Tech Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.45;
+  padding-inline: 16px;
+  padding-block: 14px 28px;
+}
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:focus-visible, canvas:focus-visible, textarea:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--led); outline-offset: 2px; }
+.app { max-width: 1240px; margin: 0 auto; display: grid; gap: 12px; }
+.top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.top h1 { margin: 0; font-family: var(--font-display); font-size: 18px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--led); font-weight: 700; }
+.top h1 small { color: var(--muted); font-size: 11px; letter-spacing: 0.16em; margin-left: 8px; }
+.top a { color: var(--line); font-size: 12px; }
+
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 384px; gap: 12px; align-items: start; }
+.stage { position: relative; height: clamp(320px, 74vh, 760px); border: 1px solid var(--edge); border-radius: 12px; background: var(--bg); overflow: hidden; }
+#cv { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+#cv:active { cursor: grabbing; }
+.chips { position: absolute; top: 8px; left: 8px; right: 8px; display: grid; gap: 6px; pointer-events: none; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { pointer-events: auto; background: rgba(0, 0, 0, 0.72); border: 1px solid #2b3a44; border-radius: 6px; color: var(--line); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 9px; }
+.chip[aria-pressed="true"] { border-color: var(--led); color: var(--led); }
+.hint { position: absolute; left: 10px; bottom: 8px; right: 10px; color: var(--muted); font-size: 11px; pointer-events: none; }
+
+.panel { background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; padding: 12px; display: grid; gap: 12px; min-width: 0; max-height: clamp(320px, 74vh, 760px); overflow: auto; }
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.tab { padding: 8px 4px; border-radius: 8px; border: 1px solid var(--edge); background: transparent; color: var(--muted); font-family: var(--font-display); letter-spacing: 0.14em; text-transform: uppercase; font-size: 12px; }
+.tab[aria-selected="true"] { color: var(--led); border-color: var(--led); }
+.pane { display: grid; gap: 12px; min-width: 0; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.seg button { padding: 8px 4px; border-radius: 8px; border: 1px solid var(--edge); background: transparent; color: var(--muted); font-family: var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; font-size: 12px; }
+.seg button[aria-pressed="true"] { color: var(--line); border-color: var(--line); }
+.lcd { background: var(--led-bg); border: 1px solid #3a2a0c; border-radius: 8px; padding: 10px 12px; min-height: 96px; color: var(--led); text-shadow: 0 0 8px rgba(255, 200, 87, 0.3); text-transform: uppercase; display: grid; gap: 4px; align-content: start; }
+.lcd .l1 { font-size: 16px; overflow-wrap: anywhere; }
+.lcd .l2 { font-size: 12.5px; opacity: 0.8; overflow-wrap: anywhere; }
+.lcd .l3 { font-size: 12.5px; color: #c9973a; overflow-wrap: anywhere; }
+.keys { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 6px; }
+.key { background: #0b1014; border: 1px solid var(--edge); border-radius: 8px; padding: 6px 4px 7px; min-height: 70px; display: grid; justify-items: center; align-content: center; gap: 1px; }
+.key .code { font-size: 10.5px; color: var(--led); }
+.key .code .g { color: var(--life); }
+.key .emo { font-size: 20px; line-height: 1.2; }
+.key .nm { font-size: 11px; line-height: 1.15; text-align: center; color: var(--ink); }
+.key[aria-pressed="true"] { border-color: var(--led); box-shadow: 0 0 0 1px var(--led); }
+.key.nobio { border-style: dashed; opacity: 0.7; }
+.go { width: 100%; padding: 13px; border: 0; border-radius: 10px; background: linear-gradient(#ffd27a, #e9a52b); color: #1b1204; font-family: var(--font-display); font-weight: 700; font-size: 15px; letter-spacing: 0.16em; text-transform: uppercase; box-shadow: 0 3px 0 #9a6a14; }
+.go:active { transform: translateY(2px); box-shadow: 0 1px 0 #9a6a14; }
+.go:disabled { opacity: 0.5; cursor: not-allowed; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.small { padding: 8px; border-radius: 8px; border: 1px solid var(--edge); background: transparent; color: var(--muted); font-family: var(--font-display); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; }
+.small:disabled { opacity: 0.45; cursor: not-allowed; }
+#repl[aria-pressed="true"] { color: var(--warn); border-color: var(--warn); }
+.trayrow { display: flex; align-items: center; gap: 12px; border: 1px solid var(--edge); border-radius: 10px; padding: 8px 10px; min-height: 64px; background: #07090c; }
+.trayrow .item { font-size: 34px; line-height: 1; background: none; border: 0; padding: 0; }
+.trayrow .info { min-width: 0; flex: 1; }
+.trayrow .info b { display: block; font-family: var(--font-display); font-size: 14px; }
+.trayrow .info span { color: var(--muted); font-size: 12px; }
+.trayrow .made { color: var(--led); white-space: nowrap; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px 14px; color: var(--muted); font-size: 12px; }
+.legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+.note { margin: 0; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+details.molx summary { cursor: pointer; color: var(--line); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; }
+.molx-body { display: grid; gap: 6px; margin-top: 8px; }
+#molx { margin: 0; padding: 10px; background: #000; border: 1px solid var(--edge); border-radius: 8px; font-size: 11.5px; line-height: 1.5; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+.boxchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.card { border: 1px solid var(--edge); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; background: #07090c; }
+.card h3 { margin: 0; font-family: var(--font-display); font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--box); }
+.card p { margin: 0; font-size: 12.5px; }
+.k { color: var(--muted); }
+.reading { color: var(--led); }
+textarea { width: 100%; min-height: 64px; resize: vertical; background: #000; color: var(--ink); border: 1px solid var(--edge); border-radius: 8px; padding: 8px; font: inherit; font-size: 12.5px; }
+.logwrap { overflow-x: auto; border: 1px solid var(--edge); border-radius: 8px; max-height: 210px; overflow-y: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+th, td { padding: 5px 7px; text-align: left; border-bottom: 1px solid #10181e; white-space: nowrap; }
+th { color: var(--muted); font-weight: 400; position: sticky; top: 0; background: var(--panel); }
+td.in { white-space: normal; min-width: 110px; color: var(--ink); }
+.rules { border-left: 2px solid var(--warn); padding-left: 10px; color: var(--ink); font-size: 12.5px; display: grid; gap: 6px; }
+.rules p { margin: 0; }
+.h { margin: 0; font-family: var(--font-display); font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--led); font-weight: 600; }
+.h span { color: var(--muted); letter-spacing: 0.06em; font-weight: 400; }
+.calc { display: grid; gap: 8px; border: 1px solid var(--edge); border-radius: 10px; padding: 10px 12px; background: #07090c; }
+.calc label { color: var(--muted); font-size: 12px; }
+select, input[type="text"] { width: 100%; background: #000; border: 1px solid var(--edge); border-radius: 8px; padding: 7px 8px; color: var(--ink); }
+input[type="range"] { width: 100%; accent-color: var(--led); }
+.calc-out { display: grid; gap: 6px; font-variant-numeric: tabular-nums; }
+.calc-out div { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid #10181e; padding-bottom: 4px; }
+.calc-out span { color: var(--muted); }
+.calc-out b { color: var(--led); font-weight: 400; text-align: right; }
+.cheats { display: grid; gap: 8px; }
+.cheat { border: 1px solid var(--edge); border-radius: 8px; padding: 8px 10px; display: grid; gap: 4px; background: #07090c; }
+.cheat b { font-family: var(--font-display); font-size: 13px; font-weight: 600; }
+.cheat p { margin: 0; font-size: 12.5px; color: var(--ink); }
+.cheat-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.st { font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.st.proven { color: var(--life); }
+.st.debated { color: var(--led); }
+.st.spec { color: var(--chem); }
+.st.yours { color: var(--line); }
+.x { background: none; border: 0; color: var(--muted); padding: 0 4px; }
+.addcheat { display: grid; gap: 6px; }
+.row-in { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+.fine { color: var(--muted); font-size: 12px; line-height: 1.55; display: grid; gap: 4px; }
+.fine p { margin: 0; }
+
+@media (max-width: 880px) {
+  .main { grid-template-columns: minmax(0, 1fr); }
+  .stage { height: clamp(300px, 58vh, 520px); }
+  .panel { max-height: none; }
+  .top h1 { font-size: 15px; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="app">
+  <header class="top">
+    <h1>Molecule Kiosk <small>prototype 02</small></h1>
+    <a href="classic.html">Open the classic kiosk</a>
+  </header>
+
+  <div class="main">
+    <div class="stage" id="stage">
+      <canvas id="cv" tabindex="0" aria-label="Wireframe kiosk in 3D. Drag to spin, scroll or pinch to zoom, tap a vial or a box."></canvas>
+      <div class="chips">
+        <div class="chip-row" id="viewRow"></div>
+        <div class="chip-row" id="focusRow"></div>
+      </div>
+      <div class="hint">Drag to spin. Scroll or pinch to zoom. Tap a vial to pick it, or tap a box to inspect it.</div>
+    </div>
+
+    <aside class="panel" aria-label="Controls">
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" id="tabMachine" aria-selected="true" type="button">Machine</button>
+        <button class="tab" role="tab" id="tabLab" aria-selected="false" type="button">Lab</button>
+        <button class="tab" role="tab" id="tabNature" aria-selected="false" type="button">Nature</button>
+      </div>
+
+      <section class="pane" id="paneMachine" role="tabpanel">
+        <div class="seg" role="group" aria-label="Which rack">
+          <button type="button" id="modeEl" aria-pressed="true">Elements</button>
+          <button type="button" id="modeBb" aria-pressed="false">Building blocks</button>
+        </div>
+        <button class="small" type="button" id="repl" aria-pressed="false">Replication: off</button>
+        <p class="note" id="modeNote"></p>
+        <div class="lcd" id="lcd" role="status" aria-live="polite">
+          <div class="l1" id="l1"></div><div class="l2" id="l2"></div><div class="l3" id="l3"></div>
+        </div>
+        <div class="keys" id="keys"></div>
+        <button class="go" id="go" type="button">Dispense</button>
+        <div class="row2">
+          <button class="small" id="clear" type="button">Clear</button>
+          <button class="small" id="refill" type="button">Refill all</button>
+        </div>
+        <div class="trayrow" id="trayrow"></div>
+        <details class="molx" id="molxBox">
+          <summary>Recipe file (.molx)</summary>
+          <div class="molx-body">
+            <pre id="molx"></pre>
+            <button class="small" type="button" id="copyMolx">Copy recipe</button>
+          </div>
+        </details>
+        <div class="legend" id="legend"></div>
+      </section>
+
+      <section class="pane" id="paneLab" role="tabpanel" hidden>
+        <p class="note">Every box is sealed. Pick some vials, run a probe, and read what each box reports. Change one vial at a time and see what moves. Then write down your theory.</p>
+        <div class="row2">
+          <button class="go" id="probe" type="button" style="font-size:13px;padding:11px">Run probe</button>
+          <button class="small" id="clearLog" type="button">Clear log</button>
+        </div>
+        <div class="boxchips" id="boxChips"></div>
+        <div class="card" id="inspector"></div>
+        <div class="logwrap">
+          <table>
+            <thead><tr><th>#</th><th>In</th><th>Flow</th><th>Tension</th><th>Form</th><th>Sense</th></tr></thead>
+            <tbody id="logBody"></tbody>
+          </table>
+        </div>
+        <button class="small" id="reveal" type="button" aria-expanded="false">Reveal the rules</button>
+        <div class="rules" id="rules" hidden></div>
+      </section>
+
+      <section class="pane" id="paneNature" role="tabpanel" hidden>
+        <h2 class="h">Why copying wins</h2>
+        <div class="calc">
+          <label for="calcObj">Build this</label>
+          <select id="calcObj">
+            <option value="0.3">Corn kernel, about 0.3 g</option>
+            <option value="5">Grape, about 5 g</option>
+            <option value="113" selected>Burger patty, about 113 g</option>
+          </select>
+          <label for="calcRate">Placing atoms one at a time: <span id="rateOut"></span></label>
+          <input type="range" id="calcRate" min="6" max="15" step="1" value="9">
+          <div class="calc-out" id="calcOut"></div>
+        </div>
+        <p class="note">Rough numbers. The copying rows start from one bacterium-sized builder and keep doubling. Real growth slows when food and space run out.</p>
+
+        <h2 class="h">Nature's cheats <span id="score"></span></h2>
+        <p class="note">Your bet: nature cheats a lot, and building this will show how much. Here is the scoreboard so far.</p>
+        <div class="cheats" id="cheats"></div>
+        <form class="addcheat" id="cheatForm">
+          <label for="cheatIn" class="k">Add a cheat you suspect</label>
+          <div class="row-in">
+            <input type="text" id="cheatIn" maxlength="160" placeholder="Enzymes use vibration to find their target">
+            <button class="small" type="submit">Add</button>
+          </div>
+        </form>
+
+        <h2 class="h">Safety line</h2>
+        <p class="note">A machine that copies itself has to stay sealed. The core runs cell-free by default, so it can build but cannot copy itself. Replication only runs inside the contained chamber, and the Sign box refuses any recipe for a copy of the machine.</p>
+      </section>
+    </aside>
+  </div>
+
+  <div class="fine">
+    <p>A fantasy prototype. Everything behind the glass is speculation, and the boxes are sealed on purpose.</p>
+    <p>Building-block mode is closer to real lab tools, like cell-free protein kits, but every recipe here is simplified.</p>
+    <p>Real loose hydrogen, oxygen and nitrogen atoms pair up at once, so a real element rack would stock stable compounds such as water, carbon dioxide and ammonia.</p>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var root = getComputedStyle(document.documentElement);
+  function tok(n) { return root.getPropertyValue(n).trim(); }
+  var C = { line: tok('--line'), life: tok('--life'), chem: tok('--chem'), solid: tok('--solid'), box: tok('--box'), pipe: tok('--pipe'), ink: tok('--ink'), muted: tok('--muted'), led: tok('--led'), warn: tok('--warn') };
+  var rgbCache = {};
+  function rgba(hex, a) {
+    var c = rgbCache[hex];
+    if (!c) { var h = hex.replace('#', ''); c = [parseInt(h.substr(0, 2), 16), parseInt(h.substr(2, 2), 16), parseInt(h.substr(4, 2), 16)]; rgbCache[hex] = c; }
+    return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a.toFixed(3) + ')';
+  }
+  function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- racks ---------- */
+  var ROWY = [3.0, 2.4, 1.8, 1.2, 0.6], ROWZ = [0.7, 0.45, 0.2, -0.05, -0.3];
+  var EL_DEF = [
+    ['H','Hydrogen','life',1.008,2.20],['C','Carbon','life',12.011,2.55],['N','Nitrogen','life',14.007,3.04],['O','Oxygen','life',15.999,3.44],['P','Phosphorus','life',30.974,2.19],['S','Sulfur','life',32.06,2.58],
+    ['F','Fluorine','chem',18.998,3.98],['Cl','Chlorine','chem',35.45,3.16],['Br','Bromine','chem',79.904,2.96],['I','Iodine','chem',126.904,2.66],['Na','Sodium','chem',22.990,0.93],['K','Potassium','chem',39.098,0.82],
+    ['Si','Silicon','solid',28.085,1.90],['Ca','Calcium','solid',40.078,1.00],['Al','Aluminum','solid',26.982,1.61],['Mg','Magnesium','solid',24.305,1.31],['Fe','Iron','solid',55.845,1.83],['Cu','Copper','solid',63.546,1.90],
+    ['Zn','Zinc','solid',65.38,1.65],['Ni','Nickel','solid',58.693,1.91],['Cr','Chromium','solid',51.996,1.66],['Ti','Titanium','solid',47.867,1.54],['Sn','Tin','solid',118.71,1.96],['Mn','Manganese','solid',54.938,1.55],
+    ['Li','Lithium','solid',6.94,0.98],['Co','Cobalt','solid',58.933,1.88],['Ga','Gallium','solid',69.723,1.81],['Ag','Silver','solid',107.868,1.93],['Au','Gold','solid',196.967,2.54],['Nd','Neodymium','solid',144.242,1.14]
+  ];
+  /* building blocks: molar mass, and hydropathy (Kyte-Doolittle for amino acids; made-up values for the rest) */
+  var BB_DEF = [
+    ['Gly','Glycine','aa',75.07,-0.4],['Ala','Alanine','aa',89.09,1.8],['Val','Valine','aa',117.15,4.2],['Leu','Leucine','aa',131.17,3.8],['Ile','Isoleucine','aa',131.17,4.5],['Pro','Proline','aa',115.13,-1.6],
+    ['Phe','Phenylalanine','aa',165.19,2.8],['Trp','Tryptophan','aa',204.23,-0.9],['Met','Methionine','aa',149.21,1.9],['Ser','Serine','aa',105.09,-0.8],['Thr','Threonine','aa',119.12,-0.7],['Cys','Cysteine','aa',121.16,2.5],
+    ['Tyr','Tyrosine','aa',181.19,-1.3],['Asn','Asparagine','aa',132.12,-3.5],['Gln','Glutamine','aa',146.15,-3.5],['Asp','Aspartate','aa',133.10,-3.5],['Glu','Glutamate','aa',147.13,-3.5],['Lys','Lysine','aa',146.19,-3.9],
+    ['Arg','Arginine','aa',174.20,-4.5],['His','Histidine','aa',155.16,-3.2],['A','Adenine (DNA letter)','nt',331.2,-3.5],['C','Cytosine (DNA letter)','nt',307.2,-3.5],['G','Guanine (DNA letter)','nt',347.2,-3.5],['T','Thymine (DNA letter)','nt',322.2,-3.5],
+    ['ATP','ATP, the energy molecule','fuel',507.18,-4.5],['Glc','Glucose','fuel',180.16,-2.0],['FA','Fatty acid','fuel',256.42,4.5],['Mg','Magnesium ion','fuel',24.305,-4.5],['K','Potassium ion','fuel',39.098,-4.5],['Ca','Calcium ion','fuel',40.078,-4.5]
+  ];
+  function buildRack(defs, colors) {
+    var vials = [], map = {}, levels = {};
+    defs.forEach(function (d, i) {
+      var row = Math.floor(i / 6), col = i % 6;
+      var o = { sym: d[0], name: d[1], tier: d[2], a: d[3], b: d[4], color: colors[d[2]], row: row, x: -1.65 + col * 0.46, y: ROWY[row], z: ROWZ[row] };
+      vials.push(o); map[o.sym] = o; levels[o.sym] = 100;
+    });
+    return { vials: vials, map: map, levels: levels };
+  }
+  var LEVELS = ['simple substance', 'rigid solid', 'pressurized gel', 'muscle tissue'];
+  var ALL20 = BB_DEF.slice(0, 20).map(function (d) { return d[0]; });
+  var PROG = ['A', 'C', 'G', 'T'], MACH = ['ATP', 'Mg', 'K'];
+  function items(list) { list.forEach(function (it) { if (typeof it.set === 'string') it.set = it.set.split(' '); }); return list; }
+  var MODES = {
+    el: buildRack(EL_DEF, { life: C.life, chem: C.chem, solid: C.solid }),
+    bb: buildRack(BB_DEF, { aa: C.life, nt: C.solid, fuel: C.chem })
+  };
+  MODES.el.items = items([
+    { code: 'A1', emo: '🍎', name: 'Apple', set: 'C H O N P K Ca Mg', lvl: 2 },
+    { code: 'A2', emo: '🍞', name: 'Bread roll', set: 'C H O N P S Na Cl K Ca', lvl: 2 },
+    { code: 'A3', emo: '🧼', name: 'Soap bar', set: 'C H O Na', lvl: 0 },
+    { code: 'A4', emo: '🧂', name: 'Table salt', set: 'Na Cl', lvl: 0 },
+    { code: 'B1', emo: '👕', name: 'Cotton tee', set: 'C H O', lvl: 1 },
+    { code: 'B2', emo: '🥤', name: 'Plastic cup', set: 'C H', lvl: 1 },
+    { code: 'B3', emo: '🫙', name: 'Glass jar', set: 'Si O Na Ca Mg Al', lvl: 1 },
+    { code: 'B4', emo: '🔌', name: 'Copper wire', set: 'Cu', lvl: 1 },
+    { code: 'C1', emo: '🥄', name: 'Steel spoon', set: 'Fe C Cr Ni', lvl: 1 },
+    { code: 'C2', emo: '🔋', name: 'Battery cell', set: 'Li Co C O F P Al Cu', lvl: 2 },
+    { code: 'C3', emo: '💍', name: 'Gold ring', set: 'Au Ag Cu', lvl: 1 },
+    { code: 'C4', emo: '🎧', name: 'Earbuds', set: 'Nd Fe Cu C H Li Si', lvl: 3 }
+  ]);
+  MODES.bb.items = items([
+    { code: 'A1', emo: '🍯', name: 'Sugar syrup', set: ['Glc'], lvl: 0 },
+    { code: 'A2', emo: '🧈', name: 'Butterfat', set: ['FA'], lvl: 0 },
+    { code: 'A3', emo: '🧬', name: 'DNA strand', set: PROG.concat(['ATP', 'Mg']), lvl: 1 },
+    { code: 'A4', emo: '🧶', name: 'Silk thread', set: ['Gly', 'Ala', 'Ser', 'Tyr'].concat(PROG, MACH), lvl: 1 },
+    { code: 'B1', emo: '🦴', name: 'Gelatin', set: ['Gly', 'Pro', 'Ala', 'Glu', 'Arg'].concat(PROG, MACH), lvl: 2 },
+    { code: 'B2', emo: '💡', name: 'Glow protein', set: ALL20.concat(PROG, MACH), lvl: 1 },
+    { code: 'B3', emo: '🐚', name: 'Seashell', set: ['Ca', 'Asp', 'Gly', 'Ser'].concat(PROG, MACH), lvl: 2 },
+    { code: 'B4', emo: '🌽', name: 'Corn kernel', set: ['Glc', 'Leu', 'Pro', 'Gln', 'Ala'].concat(PROG, MACH), lvl: 1, grow: 42 },
+    { code: 'C1', emo: '🍇', name: 'Grape', set: ['Glc', 'FA', 'Ca'].concat(PROG, MACH), lvl: 2, grow: 46 },
+    { code: 'C2', emo: '🍔', name: 'Burger patty', set: ALL20.concat(['FA', 'Glc', 'Ca'], PROG, MACH), lvl: 3, grow: 50 },
+    { code: 'C3', emo: '🔌', name: 'Copper wire', set: [], lvl: 1, nobio: true },
+    { code: 'C4', emo: '🧫', name: 'Copy of the machine', set: ALL20.concat(PROG, MACH, ['Glc', 'FA']), lvl: 3, grow: 50, selfcopy: true }
+  ]);
+  var MODE_NOTE = {
+    el: '30 elements feed the core. How the core turns atoms into things stays a black box.',
+    bb: '30 building blocks feed a cell-free core. Its ribosomes build, but cannot copy themselves unless you turn on contained replication. Whole foods need growing cells.'
+  };
+  var LEGEND = {
+    el: [['life', 'Life · 6'], ['chem', 'Chemistry · 6'], ['solid', 'Solids · 18']],
+    bb: [['life', 'Amino acids · 20'], ['solid', 'DNA letters · 4'], ['chem', 'Fuel and salts · 6']]
+  };
+
+  /* ---------- sealed boxes ---------- */
+  var BOXES = {
+    DESIGN: { b: [-1.6, 0.6, 2.25, 3.25, -1.12, -0.62], stage: 0, label: 'DESIGN · AI' },
+    FEED:   { b: [-1.5, 1.5, -0.35, 0.2, -1.05, -0.3], stage: 1, label: 'FEED' },
+    CORE:   { b: [-1.0, 1.0, -1.75, -0.55, -1.05, -0.3], stage: 2, label: 'CORE' },
+    SENSE:  { b: [1.2, 1.8, -1.5, -0.8, -1.0, -0.4], stage: 2, label: 'SENSE' },
+    FORM:   { b: [-0.9, 0.9, -2.75, -1.95, -1.05, -0.3], stage: 3, label: 'FORM' },
+    SIGN:   { b: [1.2, 1.8, -2.7, -1.9, -1.0, -0.4], stage: 4, label: 'SIGN' },
+    PSU:    { b: [-1.8, -1.2, -2.6, -0.6, -1.0, -0.4], stage: -1, label: 'PSU' }
+  };
+  var BOXINFO = {
+    DESIGN: { title: 'Design (AI)', know: 'Plans the build before anything moves. It reports a short plan code and nothing else.', guess: 'The part that folds proteins and orders the steps. Far too complex to do by hand.', unit: 'Plan' },
+    FEED:   { title: 'Feed manifold', know: 'Takes what the vials release. Its number changes when a vial is added or removed.', guess: 'Some kind of weighing or counting of the incoming stream.', unit: 'Flow' },
+    CORE:   { title: 'Core assembler', know: 'The sealed heart. In building-block mode you can see ribosomes inside. It reports one number called tension.', guess: 'Maybe about how different the picked parts are from one another.', unit: 'Tension' },
+    SENSE:  { title: 'Sense scanner', know: 'Looks at the stream and prints a three-part code.', guess: 'Counts something, by group.', unit: 'Sense' },
+    FORM:   { title: 'Form shaper', know: 'Reports a single word for what kind of stuff is coming out.', guess: 'Probably depends on the whole mix, not one vial.', unit: 'Form' },
+    SIGN:   { title: 'Sign check', know: 'Checks the recipe signature before anything reaches the tray. It has refused at least one recipe.', guess: 'A guard. It seems to block recipes that would copy the machine.', unit: 'Check' },
+    PSU:    { title: 'Power unit', know: 'Sealed. No readings at all. It hums while the machine runs.', guess: 'Unknown. Probably needs a lot of power.', unit: 'Signal' }
+  };
+
+  /* ---------- static wireframe ---------- */
+  var CAB = [], UI = [], PIPES = [], DATA = [], FLOOR = [], KEYRECTS = [];
+  function ln(list, a, b) { list.push([a, b]); }
+  function boxEdges(list, b) {
+    var x0 = b[0], x1 = b[1], y0 = b[2], y1 = b[3], z0 = b[4], z1 = b[5];
+    var p = [[x0,y0,z0],[x1,y0,z0],[x1,y1,z0],[x0,y1,z0],[x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1]];
+    [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]].forEach(function (e) { ln(list, p[e[0]], p[e[1]]); });
+  }
+  function rectZ(list, x0, x1, y0, y1, z) {
+    ln(list, [x0,y0,z],[x1,y0,z]); ln(list, [x1,y0,z],[x1,y1,z]); ln(list, [x1,y1,z],[x0,y1,z]); ln(list, [x0,y1,z],[x0,y0,z]);
+  }
+  boxEdges(CAB, [-2, 2, -3.6, 3.6, -1.2, 1.2]);
+  [[-1.9],[1.9]].forEach(function (f) { boxEdges(CAB, [f[0]-0.1, f[0]+0.1, -3.8, -3.6, -1.1, -0.9]); boxEdges(CAB, [f[0]-0.1, f[0]+0.1, -3.8, -3.6, 0.9, 1.1]); });
+  rectZ(UI, -1.9, 0.9, 0.2, 3.4, 1.2);
+  rectZ(UI, 1.05, 1.85, 2.25, 3.3, 1.2);
+  var kcx = [1.16, 1.45, 1.74], kcy = [1.85, 1.56, 1.27, 0.98];
+  for (var kr = 0; kr < 4; kr++) for (var kc = 0; kc < 3; kc++) {
+    var kl = []; rectZ(kl, kcx[kc] - 0.11, kcx[kc] + 0.11, kcy[kr] - 0.11, kcy[kr] + 0.11, 1.2); KEYRECTS.push(kl);
+  }
+  rectZ(UI, 1.05, 1.85, 0.25, 0.6, 1.2);
+  ln(UI, [-2, -0.1, 1.2], [2, -0.1, 1.2]);
+  rectZ(UI, -1.0, 1.0, -3.45, -2.95, 1.2);
+  ln(UI, [-1.0, -3.45, 1.2], [-1.0, -3.45, 0.4]); ln(UI, [1.0, -3.45, 1.2], [1.0, -3.45, 0.4]);
+  ln(UI, [-1.0, -2.95, 0.4], [1.0, -2.95, 0.4]); ln(UI, [-1.0, -3.45, 0.4], [1.0, -3.45, 0.4]);
+  ln(UI, [-1.0, -2.95, 1.2], [-1.0, -2.95, 0.4]); ln(UI, [1.0, -2.95, 1.2], [1.0, -2.95, 0.4]);
+  for (var gi = -6; gi <= 6; gi++) { ln(FLOOR, [gi, -3.8, -6], [gi, -3.8, 6]); ln(FLOOR, [-6, -3.8, gi], [6, -3.8, gi]); }
+  for (var ri = 0; ri < 5; ri++) {
+    var yt0 = ROWY[ri] - 0.28;
+    ln(PIPES, [-1.8, yt0, ROWZ[ri]], [0.95, yt0, ROWZ[ri]]);
+    ln(PIPES, [0.95, yt0, ROWZ[ri]], [0.95, yt0, -0.9]);
+  }
+  ln(PIPES, [0.95, ROWY[0] - 0.28, -0.9], [0.95, 0.2, -0.9]);
+  ln(PIPES, [0.3, -0.35, -0.68], [0.3, -0.55, -0.68]); ln(PIPES, [-0.3, -0.35, -0.68], [-0.3, -0.55, -0.68]);
+  ln(PIPES, [0.3, -1.75, -0.68], [0.3, -1.95, -0.68]); ln(PIPES, [-0.3, -1.75, -0.68], [-0.3, -1.95, -0.68]);
+  ln(PIPES, [0, -2.75, -0.68], [0, -3.2, -0.68]); ln(PIPES, [0, -3.2, -0.68], [0, -3.2, 0.8]);
+  ln(PIPES, [-1.2, -1.1, -0.7], [-1.0, -1.1, -0.7]); ln(PIPES, [1.0, -1.15, -0.7], [1.2, -1.15, -0.7]);
+  ln(PIPES, [0.9, -2.35, -0.7], [1.2, -2.35, -0.7]);
+  ln(DATA, [-1.1, 2.25, -0.9], [-1.1, -0.45, -0.9]); ln(DATA, [-1.1, -0.45, -0.9], [-0.8, -0.45, -0.9]); ln(DATA, [-0.8, -0.45, -0.9], [-0.8, -0.55, -0.9]);
+
+  function pathFor(el) {
+    var yt = ROWY[el.row] - 0.28;
+    return [[el.x, el.y - 0.23, el.z], [el.x, yt, el.z], [0.95, yt, el.z], [0.95, yt, -0.9], [0.95, 0.2, -0.9], [0, -0.05, -0.68], [0, -1.15, -0.68], [0, -2.3, -0.68], [0, -3.2, -0.68], [0, -3.2, 0.8]];
+  }
+  function pathMeta(pts) {
+    var cum = [0], t = 0;
+    for (var i = 1; i < pts.length; i++) { var a = pts[i - 1], b = pts[i]; t += Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]); cum.push(t); }
+    return { pts: pts, cum: cum, len: t };
+  }
+  function pathAt(m, u) {
+    var d = u * m.len, i = 1;
+    while (i < m.pts.length - 1 && m.cum[i] < d) i++;
+    var a = m.pts[i - 1], b = m.pts[i], s = (d - m.cum[i - 1]) / Math.max(1e-6, m.cum[i] - m.cum[i - 1]);
+    return [a[0] + (b[0] - a[0]) * s, a[1] + (b[1] - a[1]) * s, a[2] + (b[2] - a[2]) * s];
+  }
+
+  /* ---------- state ---------- */
+  var modeKey = 'el', M = MODES.el, repl = false;
+  var sel = new Set(), activeCode = null, activeItem = null, busy = false, tray = null, made = 0, run = null, lastSign = '';
+  var logRows = [], lastRead = {}, activeBox = 'CORE', notes = {}, myCheats = [];
+  var yaw = 0.62, pitch = 0.26, dist = 15.5, T = [0, 0, 0], goal = null, autoSpin = !reduce, dragging = false;
+  var W = 0, H = 0, dpr = 1, F = 600, hoverPt = null, hoverA = null, anchors = [];
+  var cy_ = 1, sy_ = 0, cp_ = 1, sp_ = 0;
+
+  try { var raw = localStorage.getItem('mk-notes'); if (raw) notes = JSON.parse(raw) || {}; } catch (e) { notes = {}; }
+  try { var rc = localStorage.getItem('mk-cheats'); if (rc) myCheats = JSON.parse(rc) || []; } catch (e) { myCheats = []; }
+  function saveNotes() { try { localStorage.setItem('mk-notes', JSON.stringify(notes)); } catch (e) {} }
+  function saveCheats() { try { localStorage.setItem('mk-cheats', JSON.stringify(myCheats)); } catch (e) {} }
+
+  /* ---------- camera ---------- */
+  function proj(p) {
+    var vx = p[0] - T[0], vy = p[1] - T[1], vz = p[2] - T[2];
+    var x1 = vx * cy_ + vz * sy_, z1 = -vx * sy_ + vz * cy_;
+    var y2 = vy * cp_ - z1 * sp_, z2 = vy * sp_ + z1 * cp_;
+    var d = dist - z2;
+    if (d < 0.6) return null;
+    var k = F / d;
+    return [W / 2 + x1 * k, H / 2 - y2 * k, d, k];
+  }
+  function fade(d) { return clamp(1.3 - (d - (dist - 3.6)) / 11, 0.2, 1); }
+
+  var cv = document.getElementById('cv'), ctx = cv.getContext('2d'), stage = document.getElementById('stage');
+  function resize() {
+    var r = stage.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = Math.max(200, r.width); H = Math.max(200, r.height);
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    F = 1.25 * Math.min(H, W * 1.2);
+  }
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(stage); else window.addEventListener('resize', resize);
+  resize();
+
+  function seg(a, b, color, alpha, width, dash) {
+    var p = proj(a), q = proj(b);
+    if (!p || !q) return;
+    ctx.strokeStyle = rgba(color, alpha * fade((p[2] + q[2]) / 2));
+    ctx.lineWidth = width;
+    ctx.setLineDash(dash || []);
+    ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
+  }
+  function lines(list, color, alpha, width, dash) { for (var i = 0; i < list.length; i++) seg(list[i][0], list[i][1], color, alpha, width, dash); }
+  function text(str, p3, color, size, align, alpha) {
+    var p = proj(p3); if (!p) return;
+    ctx.font = size + 'px "Share Tech Mono", ui-monospace, Menlo, monospace';
+    ctx.textAlign = align || 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = rgba(color, (alpha == null ? 1 : alpha) * fade(p[2]));
+    ctx.fillText(str, p[0], p[1]);
+  }
+
+  var RING = []; for (var ai = 0; ai < 8; ai++) RING.push([Math.cos(ai * Math.PI / 4), Math.sin(ai * Math.PI / 4)]);
+  function ring(cx, y, cz, r, color, alpha, width) {
+    for (var i = 0; i < 8; i++) { var a = RING[i], b = RING[(i + 1) % 8]; seg([cx + a[0] * r, y, cz + a[1] * r], [cx + b[0] * r, y, cz + b[1] * r], color, alpha, width); }
+  }
+  function drawVial(el) {
+    var on = sel.has(el.sym), yb = el.y - 0.23, yt = el.y + 0.23, r = 0.14, lv = M.levels[el.sym], lvl = lv / 100, yl = yb + 0.46 * lvl;
+    var gc = on ? el.color : '#6d7d88', ga = on ? 1 : 0.6, gw = on ? 1.8 : 1;
+    ring(el.x, yb, el.z, r, gc, ga, gw); ring(el.x, yt, el.z, r, gc, ga, gw);
+    for (var i = 0; i < 8; i += 2) seg([el.x + RING[i][0] * r, yb, el.z + RING[i][1] * r], [el.x + RING[i][0] * r, yt, el.z + RING[i][1] * r], gc, ga * 0.85, gw);
+    ring(el.x, yt + 0.07, el.z, 0.08, el.color, 0.55, 1);
+    if (lvl > 0.02) {
+      ring(el.x, yl, el.z, r * 0.92, el.color, 0.95, 1.4);
+      for (var j = 0; j < 8; j += 2) seg([el.x + RING[j][0] * r * 0.92, yb, el.z + RING[j][1] * r * 0.92], [el.x + RING[j][0] * r * 0.92, yl, el.z + RING[j][1] * r * 0.92], el.color, 0.5, 1);
+    }
+    if (lv < 25) ring(el.x, yt + 0.16, el.z, 0.05, C.warn, 1, 1.5);
+    var c = proj([el.x, el.y, el.z]);
+    if (c) {
+      anchors.push({ kind: 'vial', id: el.sym, x: c[0], y: c[1], d: c[2], r: c[3] * 0.3 + 10 });
+      if (dist < (modeKey === 'bb' ? 10.5 : 13) || (on && sel.size <= 8)) text(el.sym, [el.x, el.y, el.z + r], on ? '#ffffff' : el.color, on ? 12.5 : 10, 'center', on ? 1 : 0.9);
+    }
+  }
+
+  function runInfo(now) {
+    if (!run) return null;
+    var p = clamp((now - run.t0) / run.dur, 0, 1);
+    return { p: p, stage: Math.min(4, Math.floor(p * 5)) };
+  }
+  function drawBox(name, now) {
+    var B = BOXES[name], ri = runInfo(now), alpha = 0.7, w = 1.2, col = C.box;
+    if (ri) {
+      if (name === 'PSU') alpha = 0.85;
+      else if (B.stage === ri.stage) { alpha = 1; w = 2.2; col = (run.blocked && name === 'SIGN') ? C.warn : '#ffffff'; }
+      else if (B.stage < ri.stage) alpha = 0.95;
+      else alpha = 0.4;
+    }
+    if (activeBox === name) { w = Math.max(w, 2); alpha = 1; }
+    var edges = []; boxEdges(edges, B.b);
+    lines(edges, col, alpha, w, [5, 4]);
+    var cx = (B.b[0] + B.b[1]) / 2, cyy = (B.b[2] + B.b[3]) / 2, cz = (B.b[4] + B.b[5]) / 2;
+    var pc = proj([cx, cyy, cz]);
+    if (pc) anchors.push({ kind: 'box', id: name, x: pc[0], y: pc[1], d: pc[2], r: pc[3] * 0.5 + 12 });
+    if (!(name === 'CORE' && modeKey === 'bb')) text('?', [cx, cyy, cz + 0.35], C.box, name === 'CORE' ? 30 : 20, 'center', 0.35);
+    text(B.label, [cx, B.b[3] + 0.16, B.b[5]], C.box, 12, 'center', 0.95);
+  }
+  function drawRibosomes(now) {
+    var ri = runInfo(now), n = 6;
+    if (ri && run.grow) {
+      if (ri.stage === 2) n = Math.min(64, Math.pow(2, Math.floor(((ri.p - 0.4) / 0.2) * 6.99)));
+      else if (ri.stage > 2) n = 64;
+      else n = 1;
+    }
+    var busyCore = ri && ri.stage === 2;
+    for (var j = 0; j < n; j++) {
+      var x = -0.7 + (j % 8) * 0.2, y = -0.72 - Math.floor(j / 8) * 0.12, z = -0.68 + ((j % 2) ? 0.1 : -0.1);
+      var wob = busyCore ? Math.sin(now / 120 + j) * 0.012 : 0;
+      ring(x, y + wob, z, 0.05, C.life, busyCore ? 1 : 0.75, 1);
+      ring(x, y + 0.055 + wob, z, 0.034, C.life, busyCore ? 1 : 0.75, 1);
+    }
+    text('ribosomes', [0, -1.66, -0.3], C.life, 10, 'center', 0.8);
+    if (repl) {
+      var cb = BOXES.CORE.b, e = [];
+      boxEdges(e, [cb[0] - 0.08, cb[1] + 0.08, cb[2] - 0.08, cb[3] + 0.08, cb[4] - 0.08, cb[5] + 0.08]);
+      lines(e, C.warn, 0.85, 1.3);
+      text('CONTAINED', [0, cb[3] + 0.34, cb[5]], C.warn, 11, 'center', 0.95);
+    }
+  }
+
+  function cubeAt(cx, cy, cz, s, ang, color, alpha, w) {
+    var v = [[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]].map(function (q) {
+      var x = q[0] * s, z = q[2] * s, ca = Math.cos(ang), sa = Math.sin(ang);
+      return [cx + x * ca + z * sa, cy + q[1] * s, cz - x * sa + z * ca];
+    });
+    [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]].forEach(function (e) { seg(v[e[0]], v[e[1]], color, alpha, w); });
+  }
+
+  function draw(now) {
+    cy_ = Math.cos(yaw); sy_ = Math.sin(yaw); cp_ = Math.cos(pitch); sp_ = Math.sin(pitch);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    anchors.length = 0;
+    lines(FLOOR, '#2a3a44', 0.35, 0.7);
+    lines(CAB, C.line, 0.85, 1.2);
+    lines(UI, C.line, 0.6, 1);
+    for (var k = 0; k < KEYRECTS.length; k++) {
+      var on = activeCode && M.items[k] && M.items[k].code === activeCode;
+      lines(KEYRECTS[k], on ? C.led : C.line, on ? 1 : 0.45, on ? 2 : 0.9);
+    }
+    text('DISPLAY', [1.45, 2.78, 1.2], C.muted, 10, 'center', 0.8);
+    text('DISPENSE', [1.45, 0.42, 1.2], C.muted, 10, 'center', 0.8);
+    text('TRAY', [0, -3.2, 1.2], C.muted, 10, 'center', 0.8);
+    text('PROTOTYPE 02 · ' + (modeKey === 'el' ? 'ELEMENT RACK' : 'BUILDING BLOCKS'), [0, 3.82, 1.2], C.led, 11, 'center', 0.9);
+    lines(PIPES, C.pipe, 0.75, 1.1);
+    lines(DATA, C.line, 0.55, 1, [2, 4]);
+    Object.keys(BOXES).forEach(function (n) { drawBox(n, now); });
+    if (modeKey === 'bb') drawRibosomes(now);
+    M.vials.forEach(drawVial);
+
+    var ri = runInfo(now);
+    if (ri && run.items) {
+      var n = run.items.length;
+      for (var i = 0; i < n; i++) {
+        var u = clamp(((ri.p - 0.2) / 0.6) * 1.35 - (i / n) * 0.35, 0, 1);
+        if (run.blocked) u = Math.min(u, 0.8);
+        if (u <= 0 || u >= 1) continue;
+        var pt = proj(pathAt(run.items[i].m, u)); if (!pt) continue;
+        ctx.fillStyle = rgba(run.items[i].color, 0.25); ctx.beginPath(); ctx.arc(pt[0], pt[1], 6, 0, 6.283); ctx.fill();
+        ctx.fillStyle = rgba('#ffffff', 0.95); ctx.beginPath(); ctx.arc(pt[0], pt[1], 2.4, 0, 6.283); ctx.fill();
+      }
+    }
+    if (tray && !busy) {
+      if (tray.lump) cubeAt(0, -3.2, 0.8, 0.14, now / 700, C.warn, 0.95, 1.4);
+      else cubeAt(0, -3.2, 0.8, 0.2, now / 900, C.led, 1, 1.6);
+    }
+    var tp = proj([0, -3.2, 0.8]);
+    if (tp) anchors.push({ kind: 'tray', id: 'tray', x: tp[0], y: tp[1], d: tp[2], r: tp[3] * 0.5 + 10 });
+
+    hoverA = hoverPt && !dragging ? nearest(hoverPt.x, hoverPt.y) : null;
+    if (hoverA) {
+      var lbl = hoverA.kind === 'vial' ? hoverA.id + ' · ' + M.map[hoverA.id].name + ' · ' + Math.round(M.levels[hoverA.id]) + '%' : hoverA.kind === 'box' ? BOXINFO[hoverA.id].title : (tray ? tray.name : 'Output tray');
+      ctx.font = '12px "Share Tech Mono", ui-monospace, monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      var tw = ctx.measureText(lbl).width + 14, tx = clamp(hoverA.x + 12, 4, W - tw - 4), ty = clamp(hoverA.y - 16, 14, H - 14);
+      ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect(tx, ty - 11, tw, 22);
+      ctx.strokeStyle = rgba(C.led, 0.8); ctx.lineWidth = 1; ctx.setLineDash([]); ctx.strokeRect(tx, ty - 11, tw, 22);
+      ctx.fillStyle = rgba('#ffffff', 1); ctx.fillText(lbl, tx + 7, ty);
+    }
+  }
+
+  function nearest(px, py) {
+    var best = null, bs = 1.0001;
+    for (var i = 0; i < anchors.length; i++) {
+      var a = anchors[i], dx = px - a.x, dy = py - a.y, s = (dx * dx + dy * dy) / (a.r * a.r);
+      if (s < bs) { bs = s; best = a; }
+    }
+    return best;
+  }
+
+  function update() {
+    if (autoSpin && !dragging && !goal) yaw += 0.0032;
+    if (goal) {
+      var moving = 0;
+      if (goal.T) for (var i = 0; i < 3; i++) { T[i] += (goal.T[i] - T[i]) * 0.14; moving += Math.abs(goal.T[i] - T[i]); }
+      if (goal.dist != null) { dist += (goal.dist - dist) * 0.14; moving += Math.abs(goal.dist - dist); }
+      if (goal.yaw != null) { var dy = ((goal.yaw - yaw + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI; yaw += dy * 0.14; moving += Math.abs(dy); }
+      if (goal.pitch != null) { pitch += (goal.pitch - pitch) * 0.14; moving += Math.abs(goal.pitch - pitch); }
+      if (moving < 0.01) goal = null;
+    }
+  }
+  function frame(now) { update(); draw(now); requestAnimationFrame(frame); }
+
+  /* ---------- camera controls ---------- */
+  var ptrs = new Map(), downAt = null, moved = false;
+  cv.addEventListener('pointerdown', function (e) {
+    try { cv.setPointerCapture(e.pointerId); } catch (x) {}
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    goal = null; autoSpin = false; syncSpin();
+    if (ptrs.size === 1) { moved = false; downAt = { x: e.clientX, y: e.clientY }; dragging = true; }
+  });
+  cv.addEventListener('pointermove', function (e) {
+    var r = cv.getBoundingClientRect();
+    if (e.pointerType === 'mouse') hoverPt = { x: e.clientX - r.left, y: e.clientY - r.top };
+    if (!ptrs.has(e.pointerId)) return;
+    var p = ptrs.get(e.pointerId), dx = e.clientX - p.x, dy = e.clientY - p.y;
+    if (ptrs.size === 1) {
+      yaw += dx * 0.008; pitch = clamp(pitch + dy * 0.008, -0.6, 1.4);
+      if (downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 5) moved = true;
+    } else if (ptrs.size === 2) {
+      var other = null; ptrs.forEach(function (v, id) { if (id !== e.pointerId) other = v; });
+      if (other) {
+        var before = Math.hypot(p.x - other.x, p.y - other.y), after = Math.hypot(e.clientX - other.x, e.clientY - other.y);
+        if (after > 5) dist = clamp(dist * before / after, 4, 30);
+      }
+      moved = true;
+    }
+    p.x = e.clientX; p.y = e.clientY;
+  });
+  function endPtr(e) {
+    var was = ptrs.size;
+    ptrs.delete(e.pointerId);
+    if (ptrs.size === 0) dragging = false;
+    if (e.type === 'pointerup' && was === 1 && !moved) {
+      var r = cv.getBoundingClientRect(), a = nearest(e.clientX - r.left, e.clientY - r.top);
+      if (a) onPick(a);
+    }
+  }
+  cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', endPtr);
+  cv.addEventListener('pointerleave', function () { hoverPt = null; });
+  cv.addEventListener('wheel', function (e) { e.preventDefault(); goal = null; dist = clamp(dist * Math.exp(e.deltaY * 0.0012), 4, 30); }, { passive: false });
+  cv.addEventListener('keydown', function (e) {
+    var k = e.key, used = true;
+    if (k === 'ArrowLeft') yaw -= 0.08; else if (k === 'ArrowRight') yaw += 0.08;
+    else if (k === 'ArrowUp') pitch = clamp(pitch - 0.06, -0.6, 1.4); else if (k === 'ArrowDown') pitch = clamp(pitch + 0.06, -0.6, 1.4);
+    else if (k === '+' || k === '=') dist = clamp(dist * 0.9, 4, 30); else if (k === '-') dist = clamp(dist * 1.1, 4, 30);
+    else used = false;
+    if (used) { e.preventDefault(); autoSpin = false; syncSpin(); goal = null; }
+  });
+
+  var viewRow = document.getElementById('viewRow'), focusRow = document.getElementById('focusRow'), spinChip;
+  function chip(row, label, fn, pressed) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = label;
+    if (pressed) b.setAttribute('aria-pressed', 'false');
+    b.addEventListener('click', fn); row.appendChild(b); return b;
+  }
+  chip(viewRow, 'Front', function () { autoSpin = false; syncSpin(); goal = { yaw: 0, pitch: 0.08 }; });
+  chip(viewRow, 'Side', function () { autoSpin = false; syncSpin(); goal = { yaw: Math.PI / 2, pitch: 0.08 }; });
+  chip(viewRow, 'Top', function () { autoSpin = false; syncSpin(); goal = { pitch: 1.4 }; });
+  chip(viewRow, 'Angle', function () { autoSpin = false; syncSpin(); goal = { yaw: 0.62, pitch: 0.26 }; });
+  spinChip = chip(viewRow, 'Spin', function () { autoSpin = !autoSpin; goal = null; syncSpin(); }, true);
+  function syncSpin() { spinChip.setAttribute('aria-pressed', autoSpin ? 'true' : 'false'); }
+  syncSpin();
+  var FOCUS = { Whole: { T: [0, 0, 0], dist: 15.5 }, Rack: { T: [-0.5, 1.8, 0.2], dist: 8 }, Design: { T: [-0.5, 2.75, -0.87], dist: 6.5 }, Core: { T: [0, -1.1, -0.68], dist: 6.5 }, Panel: { T: [1.45, 1.6, 1.2], dist: 6.5 }, Tray: { T: [0, -3.1, 0.8], dist: 6 } };
+  Object.keys(FOCUS).forEach(function (n) { chip(focusRow, n, function () { goal = { T: FOCUS[n].T, dist: FOCUS[n].dist }; }); });
+
+  /* ---------- tabs ---------- */
+  var TABS = ['Machine', 'Lab', 'Nature'];
+  function setTab(which) {
+    TABS.forEach(function (t) {
+      var on = t.toLowerCase() === which;
+      document.getElementById('tab' + t).setAttribute('aria-selected', on ? 'true' : 'false');
+      document.getElementById('pane' + t).hidden = !on;
+    });
+  }
+  TABS.forEach(function (t) { document.getElementById('tab' + t).addEventListener('click', function () { setTab(t.toLowerCase()); }); });
+
+  /* ---------- machine ---------- */
+  var l1 = document.getElementById('l1'), l2 = document.getElementById('l2'), l3 = document.getElementById('l3');
+  var keys = document.getElementById('keys'), goBtn = document.getElementById('go'), trayrow = document.getElementById('trayrow');
+  var replBtn = document.getElementById('repl'), molxEl = document.getElementById('molx');
+  function show(a, b, c) { l1.textContent = a || ''; l2.textContent = b || ''; l3.textContent = c || ''; }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  function buildKeys() {
+    keys.innerHTML = '';
+    M.items.forEach(function (it) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'key' + (it.nobio ? ' nobio' : ''); b.dataset.code = it.code; b.setAttribute('aria-pressed', 'false');
+      var code = document.createElement('span'); code.className = 'code';
+      code.textContent = it.code + ' · L' + it.lvl;
+      if (it.grow) { var g = document.createElement('span'); g.className = 'g'; g.textContent = ' · grows'; code.appendChild(g); }
+      var emo = document.createElement('span'); emo.className = 'emo'; emo.setAttribute('aria-hidden', 'true'); emo.textContent = it.emo;
+      var nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = it.name;
+      b.appendChild(code); b.appendChild(emo); b.appendChild(nm);
+      b.addEventListener('click', function () { pickItem(it); });
+      keys.appendChild(b);
+    });
+  }
+  function paintKeys() {
+    Array.prototype.forEach.call(keys.children, function (k) { k.setAttribute('aria-pressed', k.dataset.code === activeCode ? 'true' : 'false'); });
+    goBtn.disabled = busy; document.getElementById('probe').disabled = busy;
+    renderMolx();
+  }
+  function sameSet(arr) {
+    var s = new Set(arr); if (s.size !== sel.size) return false;
+    var ok = true; s.forEach(function (x) { if (!sel.has(x)) ok = false; }); return ok;
+  }
+  function matchItem() {
+    for (var i = 0; i < M.items.length; i++) { var it = M.items[i]; if (!it.nobio && it.set.length && sameSet(it.set)) return it; }
+    return null;
+  }
+  function pickItem(it) {
+    if (busy) return;
+    activeItem = it; activeCode = it.code;
+    if (it.nobio) { sel = new Set(); show(it.code + ' ' + it.name, 'Biology cannot make metal wire', 'Switch to the element rack'); paintKeys(); return; }
+    sel = new Set(it.set);
+    var third = it.grow && !repl ? 'Needs growing cells: turn on replication' : (it.set.length > 8 ? it.set.length + ' vials' : it.set.join(' '));
+    show(it.code + ' ' + it.name + ' · L' + it.lvl, 'Draws on ' + it.set.length + ' vials', third);
+    paintKeys();
+  }
+  function toggleVial(s) {
+    if (busy) return;
+    if (sel.has(s)) sel.delete(s); else sel.add(s);
+    var m = matchItem(); activeItem = m; activeCode = m ? m.code : null;
+    show(s + ' · ' + M.map[s].name + ' · ' + Math.round(M.levels[s]) + '%', m ? 'Matches ' + m.code + ' ' + m.name : (sel.size ? 'Custom blend of ' + sel.size : 'Nothing picked'), sel.size > 8 ? sel.size + ' vials picked' : Array.from(sel).join(' '));
+    paintKeys();
+  }
+  function renderTray() {
+    trayrow.innerHTML = '';
+    if (!tray) { trayrow.innerHTML = '<div class="info"><b>Output tray</b><span>Empty</span></div><div class="made">MADE ' + made + '</div>'; return; }
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'item'; b.textContent = tray.emo; b.setAttribute('aria-label', 'Take ' + tray.name);
+    b.addEventListener('click', takeItem);
+    var info = document.createElement('div'); info.className = 'info'; info.innerHTML = '<b></b><span></span>';
+    info.firstChild.textContent = tray.name; info.lastChild.textContent = tray.note + ' Tap to take it.';
+    var m = document.createElement('div'); m.className = 'made'; m.textContent = 'MADE ' + made;
+    trayrow.appendChild(b); trayrow.appendChild(info); trayrow.appendChild(m);
+  }
+  function takeItem() { if (!tray) return; if (!tray.lump) made++; tray = null; show('Item taken', 'Thanks for using the kiosk', ''); renderTray(); }
+
+  function setMode(k) {
+    if (busy || k === modeKey) return;
+    modeKey = k; M = MODES[k];
+    sel = new Set(); activeCode = null; activeItem = null;
+    document.getElementById('modeEl').setAttribute('aria-pressed', k === 'el' ? 'true' : 'false');
+    document.getElementById('modeBb').setAttribute('aria-pressed', k === 'bb' ? 'true' : 'false');
+    document.getElementById('modeNote').textContent = MODE_NOTE[k];
+    syncRepl();
+    var lg = document.getElementById('legend'); lg.innerHTML = '';
+    LEGEND[k].forEach(function (L) { var s = document.createElement('span'); var i = document.createElement('i'); i.style.background = 'var(--' + L[0] + ')'; s.appendChild(i); s.appendChild(document.createTextNode(L[1])); lg.appendChild(s); });
+    buildKeys();
+    show(k === 'el' ? 'Element rack' : 'Building-block rack', 'Pick a code or tap vials', k === 'el' ? '30 vials · 6 + 6 + 18' : '30 vials · 20 + 4 + 6');
+    paintKeys(); renderInspector();
+  }
+  function syncRepl() {
+    replBtn.disabled = modeKey !== 'bb';
+    replBtn.setAttribute('aria-pressed', repl && modeKey === 'bb' ? 'true' : 'false');
+    replBtn.textContent = modeKey !== 'bb' ? 'Replication: building blocks only' : (repl ? 'Replication: on, contained' : 'Replication: off (cell-free)');
+  }
+  replBtn.addEventListener('click', function () {
+    if (busy || modeKey !== 'bb') return;
+    repl = !repl; syncRepl();
+    show(repl ? 'Replication on' : 'Replication off', repl ? 'Core sealed inside containment' : 'Cell-free: builds, cannot copy', repl ? 'Whole foods can grow now' : '');
+    renderMolx();
+  });
+  document.getElementById('modeEl').addEventListener('click', function () { setMode('el'); });
+  document.getElementById('modeBb').addEventListener('click', function () { setMode('bb'); });
+
+  /* ---------- .molx recipe ---------- */
+  function fnv(str, seed) { var h = seed >>> 0; for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return ('00000000' + h.toString(16)).slice(-8); }
+  function toyHash(s) { return fnv(s, 2166136261) + fnv(s, 3141592653); }
+  function slug(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
+  function molxText() {
+    var it = activeItem, syms = Array.from(sel);
+    var name = it ? it.name : (syms.length ? 'Custom blend' : 'nothing picked');
+    var L = [];
+    L.push('# ' + slug(name || 'recipe') + '.molx   (toy format v0.1)');
+    L.push('molx: 0.1');
+    L.push('target: ' + name);
+    L.push('level: ' + (it ? 'L' + it.lvl + ' ' + LEVELS[it.lvl] : 'unknown'));
+    L.push('rack: ' + (modeKey === 'el' ? 'elements' : 'building blocks'));
+    if (it && it.nobio) { L.push('status: not buildable from building blocks (use the element rack)'); return L.join('\n'); }
+    L.push('precursors: [' + syms.join(', ') + ']');
+    if (modeKey === 'bb') {
+      L.push('program: ' + (PROG.every(function (p) { return sel.has(p); }) ? 'gene written in A C G T' : 'none'));
+      L.push('growth: ' + (it && it.grow ? 'needs living cells, about ' + it.grow + ' doublings (contained)' : 'cell-free'));
+    }
+    L.push('sequence:');
+    L.push('  1 design    ai plans the build        # black box');
+    L.push('  2 feed      meter the precursors');
+    L.push('  3 assemble  core' + (modeKey === 'bb' ? ' ribosomes' : '') + '                # black box');
+    L.push('  4 form      shape and texture');
+    L.push('  5 sign      check signature; refuse copies of the machine');
+    L.push('output: tray');
+    L.push('signature: toy-' + toyHash(L.join('\n')) + '   # not real crypto');
+    return L.join('\n');
+  }
+  function renderMolx() { molxEl.textContent = molxText(); }
+  document.getElementById('copyMolx').addEventListener('click', function () {
+    var t = molxEl.textContent, btn = this;
+    function fallback() { var r = document.createRange(); r.selectNodeContents(molxEl); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = 'Selected, press copy'; }
+    try {
+      navigator.clipboard.writeText(t).then(function () { btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = 'Copy recipe'; }, 1400); }, fallback);
+    } catch (e) { fallback(); }
+  });
+
+  /* ---------- hidden rules (simplified, made up for this toy) ---------- */
+  function readouts(set) {
+    var syms = Array.from(set), n = syms.length;
+    if (!n) return null;
+    var mass = 0, mn = 99, mx = -99, t1 = 0, t2 = 0, t3 = 0;
+    syms.forEach(function (s) {
+      var e = M.map[s]; mass += e.a; mn = Math.min(mn, e.b); mx = Math.max(mx, e.b);
+      if (e.tier === 'life' || e.tier === 'aa') t1++; else if (e.tier === 'chem' || e.tier === 'nt') t2++; else t3++;
+    });
+    var spread = n > 1 ? mx - mn : 0, form, sense;
+    if (modeKey === 'el') {
+      if (t3 / n >= 0.75) form = 'metallic'; else if (t1 / n >= 0.5) form = 'soft'; else if (spread >= 1.7) form = 'crystal'; else form = 'mixed';
+      sense = 'L' + t1 + ' C' + t2 + ' S' + t3;
+    } else {
+      var prog = PROG.every(function (p) { return set.has(p); });
+      if (prog && t1) form = 'protein'; else if (t2 && !t1) form = 'strand'; else if (set.has('FA') && !t1) form = 'fat'; else if (set.has('Glc') && !t1) form = 'gel'; else form = 'mixed';
+      sense = 'A' + t1 + ' N' + t2 + ' F' + t3;
+    }
+    return { DESIGN: 'plan ' + toyHash(syms.sort().join(',')).slice(0, 4), FEED: mass.toFixed(1), CORE: spread.toFixed(2), FORM: form, SENSE: sense, SIGN: lastSign || '—', PSU: 'hum' };
+  }
+  function logProbe(note) {
+    var r = readouts(sel); if (!r) return;
+    lastRead = r;
+    logRows.unshift({ n: (logRows.length ? logRows[0].n + 1 : 1), ins: (modeKey === 'bb' ? '[bb] ' : '') + (sel.size > 10 ? sel.size + ' vials' : Array.from(sel).join(' ')) + (note ? ' → ' + note : ''), r: r });
+    if (logRows.length > 40) logRows.pop();
+    renderLog(); renderInspector();
+  }
+  var logBody = document.getElementById('logBody');
+  function renderLog() {
+    logBody.innerHTML = '';
+    logRows.forEach(function (row) {
+      var tr = document.createElement('tr');
+      [['', row.n], ['in', row.ins], ['', row.r.FEED], ['', row.r.CORE], ['', row.r.FORM], ['', row.r.SENSE]].forEach(function (c) { var td = document.createElement('td'); if (c[0]) td.className = c[0]; td.textContent = c[1]; tr.appendChild(td); });
+      logBody.appendChild(tr);
+    });
+  }
+
+  /* ---------- lab: inspector ---------- */
+  var boxChips = document.getElementById('boxChips'), inspector = document.getElementById('inspector');
+  Object.keys(BOXES).forEach(function (n) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.dataset.box = n; b.textContent = n; b.style.pointerEvents = 'auto';
+    b.addEventListener('click', function () { selectBox(n, true); });
+    boxChips.appendChild(b);
+  });
+  function selectBox(n, focus) {
+    activeBox = n; renderInspector();
+    if (focus) { var B = BOXES[n].b; goal = { T: [(B[0] + B[1]) / 2, (B[2] + B[3]) / 2, (B[4] + B[5]) / 2], dist: 7 }; autoSpin = false; syncSpin(); }
+  }
+  function renderInspector() {
+    Array.prototype.forEach.call(boxChips.children, function (b) { b.setAttribute('aria-pressed', b.dataset.box === activeBox ? 'true' : 'false'); });
+    var I = BOXINFO[activeBox], rd = lastRead[activeBox];
+    inspector.innerHTML = '';
+    function p(cls, label, val) { var e = document.createElement('p'); var s = document.createElement('span'); s.className = 'k'; s.textContent = label + ' '; e.appendChild(s); var t = document.createElement('span'); if (cls) t.className = cls; t.textContent = val; e.appendChild(t); inspector.appendChild(e); }
+    var h = document.createElement('h3'); h.textContent = I.title; inspector.appendChild(h);
+    p('', 'What we see:', I.know);
+    p('', 'Wild guess:', I.guess);
+    p('reading', 'Last ' + I.unit.toLowerCase() + ':', rd ? rd : 'no reading yet');
+    var lab = document.createElement('label'); lab.className = 'k'; lab.setAttribute('for', 'noteBox'); lab.textContent = 'Your theory'; inspector.appendChild(lab);
+    var ta = document.createElement('textarea'); ta.id = 'noteBox'; ta.value = notes[activeBox] || ''; ta.placeholder = 'What do you think this box does?';
+    ta.addEventListener('input', function () { notes[activeBox] = ta.value; saveNotes(); });
+    inspector.appendChild(ta);
+  }
+  var rulesEl = document.getElementById('rules'), revealBtn = document.getElementById('reveal');
+  rulesEl.innerHTML = '<p><b>Simplified rules I made up for this toy. Real chemistry is much messier.</b></p>' +
+    '<p>Flow: add up the masses of what you picked. Element rack uses atomic mass; building blocks use molar mass.</p>' +
+    '<p>Tension: the biggest minus the smallest value in the mix. Element rack uses electronegativity (Pauling). Building blocks use water-loving vs oily (Kyte-Doolittle hydropathy for amino acids; made-up values for the rest). One vial gives 0.00.</p>' +
+    '<p>Form, element rack: 75% or more Solids gives metallic. Otherwise half or more Life gives soft. Otherwise tension of 1.7 or more gives crystal. Otherwise mixed.</p>' +
+    '<p>Form, building blocks: all four DNA letters plus any amino acid gives protein. DNA letters without amino acids gives strand. Fatty acid without amino acids gives fat. Glucose without amino acids gives gel. Otherwise mixed.</p>' +
+    '<p>Sense: how many picks in each group. L/C/S for the element rack, A/N/F (amino acids, DNA letters, fuel) for building blocks.</p>' +
+    '<p>Design shows a code made from your picks. Sign says ok or refused. Power only hums.</p>';
+  revealBtn.addEventListener('click', function () {
+    var open = rulesEl.hidden; rulesEl.hidden = !open;
+    revealBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    revealBtn.textContent = open ? 'Hide the rules' : 'Reveal the rules';
+  });
+
+  /* ---------- actions ---------- */
+  function onPick(a) {
+    if (a.kind === 'vial') toggleVial(a.id);
+    else if (a.kind === 'box') { setTab('lab'); selectBox(a.id, false); }
+    else if (a.kind === 'tray') { if (tray) takeItem(); else show('Tray is empty', 'Nothing to take', ''); }
+  }
+  function startRun(dur, opts) {
+    var list = Array.from(sel).map(function (s) { return { m: pathMeta(pathFor(M.map[s])), color: M.map[s].color }; });
+    run = { t0: performance.now(), dur: dur, items: list, grow: !!(opts && opts.grow), blocked: false };
+  }
+  function needsEnergy() {
+    if (modeKey !== 'bb' || sel.has('ATP')) return false;
+    var any = false; sel.forEach(function (s) { var t = M.map[s].tier; if (t === 'aa' || t === 'nt') any = true; }); return any;
+  }
+  async function probe() {
+    if (busy) return;
+    if (!sel.size) { show('Nothing picked', 'Tap some vials first', ''); setTab('machine'); return; }
+    busy = true; paintKeys(); startRun(1800);
+    show('Probe running...', sel.size > 10 ? sel.size + ' vials' : Array.from(sel).join(' '), 'Boxes stay sealed');
+    await sleep(1850);
+    run = null; busy = false; logProbe('probe');
+    var r = lastRead; show('Probe done', 'Flow ' + r.FEED + ' · Tension ' + r.CORE, 'Form ' + r.FORM + ' · ' + r.SENSE);
+    paintKeys();
+  }
+  function fmtBig(x) { if (x < 1e6) return Math.round(x).toLocaleString(); var e = Math.floor(Math.log10(x)); return (x / Math.pow(10, e)).toFixed(1) + 'e' + e; }
+  async function dispense() {
+    if (busy) return;
+    if (tray) { show('Tray is full', 'Take your item first', ''); return; }
+    if (activeItem && activeItem.nobio) { show('Cannot build this here', 'Biology cannot make metal wire', 'Switch to the element rack'); return; }
+    if (!sel.size) { show('Nothing picked', 'Choose a code or tap vials', ''); return; }
+    var empty = Array.from(sel).filter(function (s) { return M.levels[s] < 6; });
+    if (empty.length) { show('Vial empty: ' + empty.join(' '), 'Press refill all', ''); return; }
+    var item = matchItem();
+    if (item && item.grow && !repl) { show('Needs growing cells', item.name + ' is grown, not assembled', 'Turn on contained replication'); return; }
+    if (!item && needsEnergy()) { show('No energy', 'Ribosomes run on ATP', 'Add the ATP vial'); return; }
+    var grow = !!(item && item.grow), dur = grow ? 6500 : 4500, st = dur / 5;
+    busy = true; paintKeys(); startRun(dur, { grow: grow });
+    var msgs = ['AI designing the build', 'Loading feedstock', grow ? 'Cells copying, contained' : (modeKey === 'bb' ? 'Ribosomes assembling' : 'Core assembling'), 'Forming', 'Checking signature'];
+    for (var s = 0; s < 5; s++) {
+      if (s === 2 && grow) {
+        for (var g = 0; g <= 10; g++) { var gen = Math.round(g / 10 * item.grow); show(msgs[2] + '...', 'Doubling ' + gen + ' of ' + item.grow, 'Copies: ' + fmtBig(Math.pow(2, gen))); await sleep(st / 11); }
+      } else {
+        show(msgs[s] + '...', s === 0 ? 'Design: sealed' : (s === 4 ? 'Sign: sealed' : 'Assembler: sealed'), ''); await sleep(st);
+      }
+      if (s === 4 && item && item.selfcopy) {
+        run.blocked = true; lastSign = 'refused';
+        show('Blocked by Sign', 'Will not build a copy of its own machinery', 'Nothing dispensed');
+        await sleep(1100);
+        run = null; busy = false; logProbe('refused'); paintKeys(); return;
+      }
+    }
+    lastSign = 'ok';
+    sel.forEach(function (x) { M.levels[x] = Math.max(0, M.levels[x] - (2 + Math.random() * 3)); });
+    run = null; busy = false;
+    if (item) { tray = { emo: item.emo, name: item.name, note: (grow ? 'Grown in the sealed chamber. ' : '') + 'Level ' + item.lvl + ', ' + LEVELS[item.lvl] + '.', lump: false }; show('Done: ' + item.name, 'Collect from tray', item.set.length + ' vials used'); }
+    else { tray = { emo: '🪨', name: 'Gray lump', note: 'The box does not know this mix.', lump: true }; show('Unknown mix', 'The box made a gray lump', sel.size > 10 ? sel.size + ' vials' : Array.from(sel).join(' ')); }
+    logProbe(item ? item.name : 'lump');
+    paintKeys(); renderTray();
+  }
+  goBtn.addEventListener('click', dispense);
+  document.getElementById('probe').addEventListener('click', probe);
+  document.getElementById('clear').addEventListener('click', function () { if (busy) return; sel.clear(); activeCode = null; activeItem = null; show('Cleared', 'Pick a code or tap vials', ''); paintKeys(); });
+  document.getElementById('refill').addEventListener('click', function () { if (busy) return; Object.keys(M.levels).forEach(function (s) { M.levels[s] = 100; }); show('Vials refilled', 'All 30 at full', ''); });
+  document.getElementById('clearLog').addEventListener('click', function () { logRows = []; lastRead = {}; renderLog(); renderInspector(); });
+
+  /* ---------- nature: copying calculator ---------- */
+  var calcObj = document.getElementById('calcObj'), calcRate = document.getElementById('calcRate'), calcOut = document.getElementById('calcOut'), rateOut = document.getElementById('rateOut');
+  function human(sec) {
+    if (sec < 120) return Math.round(sec) + ' seconds';
+    if (sec < 7200) return Math.round(sec / 60) + ' minutes';
+    if (sec < 172800) return Math.round(sec / 3600) + ' hours';
+    var yr = sec / 31557600;
+    if (yr < 2) return Math.round(sec / 86400) + ' days';
+    if (yr < 1e6) return Math.round(yr).toLocaleString() + ' years';
+    if (yr < 1e9) return (yr / 1e6).toFixed(yr < 1e7 ? 1 : 0) + ' million years';
+    return (yr / 1e9).toFixed(1) + ' billion years';
+  }
+  function sci(x) { var e = Math.floor(Math.log10(x)); return (x / Math.pow(10, e)).toFixed(1) + ' × 10^' + e; }
+  function calc() {
+    var grams = parseFloat(calcObj.value), rate = Math.pow(10, parseInt(calcRate.value, 10));
+    var atoms = grams / 6.5 * 6.022e23;
+    var doublings = Math.max(1, Math.ceil(Math.log2(atoms / 1e10)));
+    rateOut.textContent = sci(rate) + ' per second';
+    var rows = [
+      ['Atoms to place', 'about ' + sci(atoms)],
+      ['One at a time', human(atoms / rate)],
+      ['Copying, bacteria pace (20 min per doubling)', human(doublings * 1200)],
+      ['Copying, animal-cell pace (about a day)', human(doublings * 86400)],
+      ['Doublings needed', String(doublings)]
+    ];
+    calcOut.innerHTML = '';
+    rows.forEach(function (r) { var d = document.createElement('div'); var a = document.createElement('span'); a.textContent = r[0]; var b = document.createElement('b'); b.textContent = r[1]; d.appendChild(a); d.appendChild(b); calcOut.appendChild(d); });
+  }
+  calcObj.addEventListener('change', calc); calcRate.addEventListener('input', calc);
+
+  /* ---------- nature: cheats scoreboard ---------- */
+  var CHEATS = [
+    ['proven', 'Enzymes are absurd accelerators', 'Some enzymes speed a reaction up by around 10^17 times. A reaction that would take millions of years happens in milliseconds.'],
+    ['proven', 'Hydrogen tunneling in enzymes', 'In several enzymes, hydrogen slips through an energy wall instead of climbing over it. This is measured, not guessed.'],
+    ['proven', 'Self-assembly for free', 'Proteins and DNA fold themselves into exact shapes using ordinary heat and shape-matching. No hands needed. Not quantum, but a huge cheat.'],
+    ['debated', 'Proton tunneling in DNA', 'Protons in DNA base pairs may tunnel across and cause some copying errors. Evidence is growing, and how much it matters is argued.'],
+    ['debated', 'Quantum effects in photosynthesis', 'Early claims of long-lasting quantum coherence in plant energy transfer were later scaled back at room temperature.'],
+    ['debated', 'Birds sensing magnetism', 'A light-sensitive protein in bird eyes may use electron spin pairs to feel Earth’s magnetic field. Promising, not settled.'],
+    ['spec', 'Entanglement in DNA copying', 'No evidence so far. Warm, wet cells break entanglement very quickly.'],
+    ['spec', 'Entangled feed tubes', 'From the blueprint PDF. Entangled atoms in separate tubes cannot hand each other energy, and the link would break almost at once.']
+  ];
+  var STLABEL = { proven: 'Proven', debated: 'Debated', spec: 'Speculative', yours: 'Your bet' };
+  var cheatsEl = document.getElementById('cheats'), scoreEl = document.getElementById('score');
+  function renderCheats() {
+    cheatsEl.innerHTML = '';
+    var count = { proven: 0, debated: 0, spec: 0 };
+    CHEATS.forEach(function (c) { count[c[0]]++; cheatsEl.appendChild(cheatCard(c[0], c[1], c[2], -1)); });
+    myCheats.forEach(function (t, i) { cheatsEl.appendChild(cheatCard('yours', t, 'Untested. Add it to the list of things to check when building starts.', i)); });
+    scoreEl.textContent = '· ' + count.proven + ' proven · ' + count.debated + ' debated · ' + count.spec + ' speculative · ' + myCheats.length + ' yours';
+  }
+  function cheatCard(st, title, body, idx) {
+    var d = document.createElement('div'); d.className = 'cheat';
+    var top = document.createElement('div'); top.className = 'cheat-top';
+    var b = document.createElement('b'); b.textContent = title;
+    var tag = document.createElement('span'); tag.className = 'st ' + st; tag.textContent = STLABEL[st];
+    top.appendChild(b);
+    var right = document.createElement('span'); right.appendChild(tag);
+    if (idx >= 0) { var x = document.createElement('button'); x.type = 'button'; x.className = 'x'; x.setAttribute('aria-label', 'Remove'); x.textContent = '×'; x.addEventListener('click', function () { myCheats.splice(idx, 1); saveCheats(); renderCheats(); }); right.appendChild(x); }
+    top.appendChild(right);
+    var p = document.createElement('p'); p.textContent = body;
+    d.appendChild(top); d.appendChild(p);
+    return d;
+  }
+  document.getElementById('cheatForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var inp = document.getElementById('cheatIn'), v = inp.value.trim();
+    if (!v) return;
+    myCheats.push(v); saveCheats(); inp.value = ''; renderCheats();
+  });
+
+  /* ---------- start ---------- */
+  document.getElementById('modeNote').textContent = MODE_NOTE.el;
+  (function () { var lg = document.getElementById('legend'); LEGEND.el.forEach(function (L) { var s = document.createElement('span'); var i = document.createElement('i'); i.style.background = 'var(--' + L[0] + ')'; s.appendChild(i); s.appendChild(document.createTextNode(L[1])); lg.appendChild(s); }); })();
+  syncRepl(); buildKeys();
+  show('Ready', 'Pick a code or tap vials', '30 vials · 6 + 6 + 18');
+  paintKeys(); renderTray(); renderLog(); renderInspector(); calc(); renderCheats();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body></html>

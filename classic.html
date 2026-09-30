@@ -1,0 +1,417 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>html{color-scheme:dark;background:#000}body{margin:0}</style><title>Molecule Kiosk</title></head><body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Share+Tech+Mono&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: a single vending cabinet. Glass window with the vial rack on the left, keypad + amber display on the right, output tray underneath. The assembler is a sealed black box. */
+:root {
+  color-scheme: dark;
+  --bg: #0a0d11;
+  --cabinet: #161b22;
+  --cabinet-hi: #1d242d;
+  --edge: #2b3440;
+  --glass: #0e1319;
+  --ink: #e6ecf2;
+  --muted: #8b97a5;
+  --led: #ffc857;
+  --led-bg: #130e05;
+  --life: #37d6a0;
+  --chem: #ff8a5c;
+  --solid: #7ea8ff;
+  --warn: #ff5d5d;
+  --font-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Share Tech Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.45;
+  padding-inline: 16px;
+  padding-block: 20px 32px;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible { outline: 2px solid var(--led); outline-offset: 2px; }
+
+.machine {
+  max-width: 780px;
+  margin: 0 auto;
+  background: linear-gradient(180deg, var(--cabinet-hi), var(--cabinet) 40%);
+  border: 2px solid var(--edge);
+  border-radius: 18px;
+  padding: 14px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  display: grid;
+  gap: 14px;
+}
+.sign {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #090c10;
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  font-family: var(--font-display);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--led);
+  text-shadow: 0 0 10px rgba(255, 200, 87, 0.35);
+}
+.sign h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: 0.22em; }
+.sign .open { font-size: 11px; display: inline-flex; align-items: center; gap: 8px; color: var(--life); text-shadow: none; }
+.sign .open i { width: 8px; height: 8px; border-radius: 50%; background: var(--life); box-shadow: 0 0 8px var(--life); animation: blink 2.4s infinite; }
+@keyframes blink { 50% { opacity: 0.35; } }
+
+.deck { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 14px; }
+.window {
+  min-width: 0;
+  background: var(--glass);
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.6), inset 0 0 0 3px rgba(255, 255, 255, 0.03);
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+.tier { display: grid; gap: 8px; }
+.tier-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  font-family: var(--font-display); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--tc); border-bottom: 1px solid color-mix(in srgb, var(--tc) 40%, transparent); padding-bottom: 4px;
+}
+.tier-head span:last-child { color: var(--muted); letter-spacing: 0.1em; }
+.tier[data-tier="life"] { --tc: var(--life); }
+.tier[data-tier="chem"] { --tc: var(--chem); }
+.tier[data-tier="solid"] { --tc: var(--solid); }
+.rack { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px 8px; }
+.vial {
+  background: none; border: 0; padding: 0;
+  display: grid; justify-items: center; gap: 3px;
+  transition: transform 0.15s ease;
+}
+.vial .cap { width: 52%; height: 6px; border-radius: 2px 2px 0 0; background: color-mix(in srgb, var(--tc) 55%, #222); }
+.vial .tube {
+  position: relative; width: 70%; max-width: 44px; height: 62px; overflow: hidden;
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  border-radius: 4px 4px 14px 14px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.vial .liq {
+  position: absolute; left: 0; right: 0; bottom: 0; height: var(--lvl, 100%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tc) 90%, #fff), color-mix(in srgb, var(--tc) 70%, #000));
+  opacity: 0.85; transition: height 0.7s ease;
+}
+.vial .sym { font-family: var(--font-mono); font-size: 13px; color: var(--ink); }
+.vial[aria-pressed="true"] { transform: translateY(-3px); }
+.vial[aria-pressed="true"] .tube { border-color: var(--tc); box-shadow: 0 0 12px color-mix(in srgb, var(--tc) 60%, transparent); }
+.vial[aria-pressed="true"] .sym { color: var(--tc); }
+.vial.low .tube::after { content: ""; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--warn); }
+.vial.run .tube { animation: pulse 0.5s infinite alternate; }
+@keyframes pulse { to { box-shadow: 0 0 16px var(--tc); } }
+
+.box {
+  position: relative; height: 92px; border-radius: 10px;
+  border: 1px dashed #3a4350;
+  background: repeating-linear-gradient(0deg, #06080b 0 3px, #0b0e12 3px 6px);
+  display: grid; place-items: center;
+}
+.box .tag { position: absolute; top: 6px; left: 10px; font-family: var(--font-display); font-size: 10px; letter-spacing: 0.22em; color: var(--muted); text-transform: uppercase; }
+.box .q { font-family: var(--font-display); font-size: 40px; font-weight: 700; color: #2a323d; }
+.box .lights { position: absolute; bottom: 8px; display: flex; gap: 8px; }
+.box .lights i { width: 7px; height: 7px; border-radius: 50%; background: #2a323d; }
+.box.busy { border-color: var(--led); }
+.box.busy .q { color: var(--led); animation: flick 0.35s infinite; }
+.box.busy .lights i { animation: lamp 0.6s infinite alternate; }
+.box.busy .lights i:nth-child(2) { animation-delay: 0.1s; }
+.box.busy .lights i:nth-child(3) { animation-delay: 0.2s; }
+.box.busy .lights i:nth-child(4) { animation-delay: 0.3s; }
+.box.busy .lights i:nth-child(5) { animation-delay: 0.4s; }
+@keyframes flick { 50% { opacity: 0.45; } }
+@keyframes lamp { to { background: var(--led); box-shadow: 0 0 8px var(--led); } }
+
+.panel { min-width: 0; display: grid; gap: 12px; align-content: start; }
+.lcd {
+  background: var(--led-bg); border: 1px solid #3a2a0c; border-radius: 8px; padding: 10px 12px; min-height: 104px;
+  font-family: var(--font-mono); color: var(--led); text-shadow: 0 0 8px rgba(255, 200, 87, 0.3);
+  text-transform: uppercase; display: grid; gap: 4px; align-content: start;
+}
+.lcd .l1 { font-size: 16px; overflow-wrap: anywhere; }
+.lcd .l2 { font-size: 12.5px; opacity: 0.8; overflow-wrap: anywhere; }
+.lcd .l3 { font-size: 12.5px; color: #c9973a; }
+.keys { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 6px; }
+.key {
+  background: #1f2630; border: 1px solid var(--edge); border-radius: 8px; padding: 7px 4px 8px; min-height: 72px;
+  display: grid; justify-items: center; align-content: center; gap: 1px;
+}
+.key .code { font-family: var(--font-mono); font-size: 11px; color: var(--led); }
+.key .emo { font-size: 22px; line-height: 1.2; }
+.key .nm { font-size: 11.5px; line-height: 1.15; text-align: center; color: var(--ink); }
+.key[aria-pressed="true"] { border-color: var(--led); box-shadow: 0 0 0 1px var(--led), 0 0 14px rgba(255, 200, 87, 0.25); }
+.go {
+  width: 100%; padding: 14px; border: 0; border-radius: 10px;
+  background: linear-gradient(#ffd27a, #e9a52b); color: #1b1204;
+  font-family: var(--font-display); font-weight: 700; font-size: 16px; letter-spacing: 0.16em; text-transform: uppercase;
+  box-shadow: 0 3px 0 #9a6a14;
+}
+.go:active { transform: translateY(2px); box-shadow: 0 1px 0 #9a6a14; }
+.go:disabled { opacity: 0.5; cursor: not-allowed; }
+.small-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.small {
+  padding: 8px; border-radius: 8px; border: 1px solid var(--edge); background: transparent; color: var(--muted);
+  font-family: var(--font-display); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
+}
+
+.tray {
+  border-radius: 12px; background: #07090c; border: 1px solid var(--edge); border-top: 7px solid #2a323d;
+  padding: 10px 14px; min-height: 92px; display: flex; align-items: center; gap: 14px;
+}
+.tray .label { font-family: var(--font-display); font-size: 10px; letter-spacing: 0.22em; color: var(--muted); text-transform: uppercase; }
+.tray .slot { flex: 1; min-width: 0; display: flex; align-items: center; gap: 14px; }
+.tray .item { font-size: 46px; line-height: 1; background: none; border: 0; padding: 0; animation: drop 0.5s cubic-bezier(.3,1.4,.5,1); }
+@keyframes drop { from { transform: translateY(-50px); opacity: 0; } }
+.tray .info { min-width: 0; }
+.tray .info b { display: block; font-family: var(--font-display); font-size: 16px; }
+.tray .info span { font-size: 12.5px; color: var(--muted); }
+.tray .made { font-family: var(--font-mono); color: var(--led); font-size: 13px; white-space: nowrap; }
+
+.fine { max-width: 780px; margin: 16px auto 0; color: var(--muted); font-size: 13px; line-height: 1.55; display: grid; gap: 6px; }
+.fine p { margin: 0; }
+
+@media (max-width: 680px) {
+  .deck { grid-template-columns: minmax(0, 1fr); }
+  .sign h1 { font-size: 15px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>
+
+<main class="machine">
+  <div class="sign">
+    <h1>Molecule Kiosk</h1>
+    <span class="open"><i></i>Open</span>
+  </div>
+
+  <div class="deck">
+    <section class="window" aria-label="Feedstock vials">
+      <div id="rack"></div>
+      <div class="box" id="box" aria-label="Assembler, sealed black box">
+        <span class="tag">Assembler · sealed</span>
+        <span class="q" aria-hidden="true">?</span>
+        <span class="lights" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Controls">
+      <div class="lcd" id="lcd" role="status" aria-live="polite">
+        <div class="l1" id="l1"></div>
+        <div class="l2" id="l2"></div>
+        <div class="l3" id="l3"></div>
+      </div>
+      <div class="keys" id="keys"></div>
+      <button class="go" id="go" type="button">Dispense</button>
+      <div class="small-row">
+        <button class="small" id="clear" type="button">Clear</button>
+        <button class="small" id="refill" type="button">Refill all</button>
+      </div>
+    </section>
+  </div>
+
+  <section class="tray" aria-label="Output tray">
+    <div class="slot" id="slot"></div>
+    <div class="made" id="made">MADE 0</div>
+  </section>
+</main>
+
+<div class="fine">
+  <p>A fantasy machine. The assembler is a black box on purpose, so nothing here shows how atoms become things.</p>
+  <p>Ingredient lists are simplified ideas, not recipes. Tap vials to pick your own mix. If it matches a listed item, the box makes it. If not, you get a gray lump.</p>
+  <p>Loose hydrogen, oxygen and nitrogen atoms pair up at once, so a real version would stock stable compounds such as water, carbon dioxide and ammonia.</p>
+</div>
+
+<script>
+(function () {
+  var TIERS = [
+    { id: 'life', label: 'Life', sub: 'to live', els: [['H','Hydrogen'],['C','Carbon'],['N','Nitrogen'],['O','Oxygen'],['P','Phosphorus'],['S','Sulfur']] },
+    { id: 'chem', label: 'Chemistry', sub: 'to react', els: [['F','Fluorine'],['Cl','Chlorine'],['Br','Bromine'],['I','Iodine'],['Na','Sodium'],['K','Potassium']] },
+    { id: 'solid', label: 'Solids', sub: 'to build', els: [['Si','Silicon'],['Ca','Calcium'],['Al','Aluminum'],['Mg','Magnesium'],['Fe','Iron'],['Cu','Copper'],['Zn','Zinc'],['Ni','Nickel'],['Cr','Chromium'],['Ti','Titanium'],['Sn','Tin'],['Mn','Manganese'],['Li','Lithium'],['Co','Cobalt'],['Ga','Gallium'],['Ag','Silver'],['Au','Gold'],['Nd','Neodymium']] }
+  ];
+  var ITEMS = [
+    { code: 'A1', emo: '🍎', name: 'Apple', els: 'C H O N P K Ca Mg' },
+    { code: 'A2', emo: '🍞', name: 'Bread roll', els: 'C H O N P S Na Cl K Ca' },
+    { code: 'A3', emo: '🧼', name: 'Soap bar', els: 'C H O Na' },
+    { code: 'A4', emo: '🧂', name: 'Table salt', els: 'Na Cl' },
+    { code: 'B1', emo: '👕', name: 'Cotton tee', els: 'C H O' },
+    { code: 'B2', emo: '🥤', name: 'Plastic cup', els: 'C H' },
+    { code: 'B3', emo: '🫙', name: 'Glass jar', els: 'Si O Na Ca Mg Al' },
+    { code: 'B4', emo: '🔌', name: 'Copper wire', els: 'Cu' },
+    { code: 'C1', emo: '🥄', name: 'Steel spoon', els: 'Fe C Cr Ni' },
+    { code: 'C2', emo: '🔋', name: 'Battery cell', els: 'Li Co C O F P Al Cu' },
+    { code: 'C3', emo: '💍', name: 'Gold ring', els: 'Au Ag Cu' },
+    { code: 'C4', emo: '🎧', name: 'Earbuds', els: 'Nd Fe Cu C H Li Si' }
+  ];
+  ITEMS.forEach(function (it) { it.set = it.els.split(' '); });
+
+  var NAMES = {}, levels = {}, sel = new Set(), activeCode = null, busy = false, tray = null, made = 0, vialEls = {};
+
+  var rack = document.getElementById('rack');
+  var keys = document.getElementById('keys');
+  var box = document.getElementById('box');
+  var goBtn = document.getElementById('go');
+  var l1 = document.getElementById('l1'), l2 = document.getElementById('l2'), l3 = document.getElementById('l3');
+  var slot = document.getElementById('slot'), madeEl = document.getElementById('made');
+
+  function show(a, b, c) { l1.textContent = a || ''; l2.textContent = b || ''; l3.textContent = c || ''; }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  TIERS.forEach(function (t) {
+    var sec = document.createElement('div');
+    sec.className = 'tier';
+    sec.dataset.tier = t.id;
+    sec.innerHTML = '<div class="tier-head"><span>' + t.label + ' · ' + t.els.length + '</span><span>' + t.sub + '</span></div>';
+    var grid = document.createElement('div');
+    grid.className = 'rack';
+    t.els.forEach(function (e) {
+      var s = e[0]; NAMES[s] = e[1]; levels[s] = 100;
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'vial';
+      b.setAttribute('aria-pressed', 'false');
+      b.setAttribute('aria-label', e[1] + ' (' + s + ')');
+      b.innerHTML = '<span class="cap"></span><span class="tube"><span class="liq"></span></span><span class="sym">' + s + '</span>';
+      b.style.setProperty('--tc', 'var(--' + t.id + ')');
+      b.addEventListener('click', function () { toggleVial(s); });
+      vialEls[s] = b;
+      grid.appendChild(b);
+    });
+    sec.appendChild(grid);
+    rack.appendChild(sec);
+  });
+  rack.style.display = 'grid'; rack.style.gap = '12px';
+
+  ITEMS.forEach(function (it) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'key';
+    b.setAttribute('aria-pressed', 'false');
+    b.dataset.code = it.code;
+    b.innerHTML = '<span class="code">' + it.code + '</span><span class="emo" aria-hidden="true">' + it.emo + '</span><span class="nm">' + it.name + '</span>';
+    b.addEventListener('click', function () { pickItem(it); });
+    keys.appendChild(b);
+  });
+
+  function paint() {
+    Object.keys(vialEls).forEach(function (s) {
+      var v = vialEls[s];
+      v.setAttribute('aria-pressed', sel.has(s) ? 'true' : 'false');
+      v.querySelector('.tube').style.setProperty('--lvl', levels[s] + '%');
+      v.querySelector('.liq').style.setProperty('--lvl', levels[s] + '%');
+      v.classList.toggle('low', levels[s] < 25);
+    });
+    Array.prototype.forEach.call(keys.children, function (k) {
+      k.setAttribute('aria-pressed', k.dataset.code === activeCode ? 'true' : 'false');
+    });
+    goBtn.disabled = busy;
+  }
+
+  function matchItem() {
+    for (var i = 0; i < ITEMS.length; i++) {
+      var it = ITEMS[i];
+      if (it.set.length === sel.size && it.set.every(function (s) { return sel.has(s); })) return it;
+    }
+    return null;
+  }
+
+  function pickItem(it) {
+    if (busy) return;
+    sel = new Set(it.set); activeCode = it.code;
+    show(it.code + ' ' + it.name, 'Draws on ' + it.set.length + ' vials', it.set.join(' '));
+    paint();
+  }
+
+  function toggleVial(s) {
+    if (busy) return;
+    if (sel.has(s)) sel.delete(s); else sel.add(s);
+    activeCode = null;
+    var m = matchItem();
+    show(s + ' · ' + NAMES[s] + ' · ' + Math.round(levels[s]) + '%',
+         m ? 'Matches ' + m.code + ' ' + m.name : (sel.size ? 'Custom blend of ' + sel.size : 'Nothing picked'),
+         Array.from(sel).join(' '));
+    if (m) activeCode = m.code;
+    paint();
+  }
+
+  function renderTray() {
+    slot.innerHTML = '';
+    if (!tray) {
+      var e = document.createElement('div');
+      e.className = 'label';
+      e.textContent = 'Output tray · empty';
+      slot.appendChild(e);
+    } else {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'item'; b.textContent = tray.emo;
+      b.setAttribute('aria-label', 'Take ' + tray.name);
+      b.addEventListener('click', takeItem);
+      var info = document.createElement('div');
+      info.className = 'info';
+      info.innerHTML = '<b></b><span></span>';
+      info.firstChild.textContent = tray.name;
+      info.lastChild.textContent = tray.note + ' Tap to take it.';
+      slot.appendChild(b); slot.appendChild(info);
+    }
+    madeEl.textContent = 'MADE ' + made;
+  }
+
+  function takeItem() {
+    if (!tray) return;
+    if (!tray.lump) made++;
+    tray = null;
+    show('Item taken', 'Thanks for using the kiosk', '');
+    renderTray();
+  }
+
+  async function dispense() {
+    if (busy) return;
+    if (tray) { show('Tray is full', 'Take your item first', ''); return; }
+    if (!sel.size) { show('Nothing picked', 'Choose a code or tap vials', ''); return; }
+    var empty = Array.from(sel).filter(function (s) { return levels[s] < 6; });
+    if (empty.length) { show('Vial empty: ' + empty.join(' '), 'Press refill all', ''); return; }
+    busy = true; box.classList.add('busy');
+    sel.forEach(function (s) { vialEls[s].classList.add('run'); });
+    paint();
+    var msgs = ['Loading feedstock', 'The box is working', 'Do not shake the glass', 'Almost there'];
+    for (var i = 0; i < msgs.length; i++) { show(msgs[i] + '...', 'Assembler: sealed', ''); await sleep(600); }
+    var item = matchItem();
+    sel.forEach(function (s) { levels[s] = Math.max(0, levels[s] - (2 + Math.random() * 3)); vialEls[s].classList.remove('run'); });
+    box.classList.remove('busy'); busy = false;
+    if (item) {
+      tray = { emo: item.emo, name: item.name, note: 'Built from ' + item.set.join(', ') + '.', lump: false };
+      show('Done: ' + item.name, 'Collect from tray', item.set.length + ' vials used');
+    } else {
+      tray = { emo: '🪨', name: 'Gray lump', note: 'The box does not know this mix.', lump: true };
+      show('Unknown mix', 'The box made a gray lump', Array.from(sel).join(' '));
+    }
+    paint(); renderTray();
+  }
+
+  goBtn.addEventListener('click', dispense);
+  document.getElementById('clear').addEventListener('click', function () {
+    if (busy) return;
+    sel.clear(); activeCode = null; show('Cleared', 'Pick a code or tap vials', ''); paint();
+  });
+  document.getElementById('refill').addEventListener('click', function () {
+    if (busy) return;
+    Object.keys(levels).forEach(function (s) { levels[s] = 100; });
+    show('Vials refilled', 'All 30 at full', ''); paint();
+  });
+
+  show('Ready', 'Pick a code or tap vials', '30 vials · 6 + 6 + 18');
+  paint(); renderTray();
+})();
+</script>
+</body></html>
